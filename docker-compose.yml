@@ -1,0 +1,59 @@
+# ── AuK Gradio – Docker Compose (Hybrid Auto-Tier) ─────────────────
+# CPU (default):   docker compose up --build
+# NVIDIA GPU:      DEVICE=cuda docker compose --profile gpu up --build
+# macOS ARM:       docker compose up --build   (CPU only, no CUDA passthrough)
+# ─────────────────────────────────────────────────────────────────────
+services:
+  gradio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DEVICE: ${DEVICE:-cpu}
+        CUDA_VERSION_MM: ${CUDA_VERSION_MM:-124}
+    container_name: auk-gradio
+    ports:
+      - "${AUK_PORT:-7860}:7860"
+    volumes:
+      - auk-ckpts:/app/ckpts
+      - auk-outputs:/app/outputs
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - AUTO_DOWNLOAD_WEIGHTS=${AUTO_DOWNLOAD_WEIGHTS:-true}
+      - SKIP_AUK_FLASH=${SKIP_AUK_FLASH:-0}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7860/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
+  gradio-cuda:
+    extends:
+      service: gradio
+    profiles:
+      - gpu
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DEVICE: cuda
+        CUDA_VERSION_MM: ${CUDA_VERSION_MM:-124}
+    container_name: auk-gradio-cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: 2gb
+
+volumes:
+  auk-ckpts:
+    name: auk-ckpts
+  auk-outputs:
+    name: auk-outputs

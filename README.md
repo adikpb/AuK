@@ -9,11 +9,34 @@
   <a href=https://arxiv.org/abs/2609.08936 target="_blank"><img src=https://img.shields.io/badge/Report-b5212f.svg?logo=arxiv height=22px></a>
   <a href=https://huggingface.co/spaces/tencent/AuK target="_blank"><img src=https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Demo%20Space-ffbd45.svg height=22px></a>
   <a href=https://modelscope.cn/studios/Tencent-Hunyuan/AuK target="_blank"><img src=https://img.shields.io/badge/%F0%9F%A4%96%20ModelScope-Demo%20Space-624aff.svg height=22px></a>
+  <img src=https://img.shields.io/badge/License-MIT-blue.svg height=22px>
+  <img src=https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white height=22px>
+  <img src=https://img.shields.io/badge/PyTorch-2.x-EE4C2C.svg?logo=pytorch&logoColor=white height=22px>
+  <img src=https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white height=22px>
 </div>
+
+> **22 audio tasks. One model. One command.** TTS, voice cloning, editing, enhancement, and separation — all through natural language.
 
 <p align="center">
 💻 Try our model on the <a href="https://huggingface.co/spaces/tencent/AuK">HuggingFace Space</a> · <a href="https://modelscope.cn/studios/Tencent-Hunyuan/AuK">ModelScope Space</a>!
 </p>
+
+## Why this fork?
+
+- **One-command Docker (CPU + GPU)** — `docker compose up --build` gets you running instantly; add `DEVICE=cuda` for GPU.
+- **22-tab Gradio test UI** — every COOKBOOK task exposed in a single web interface for quick experimentation.
+- **Auto device & dtype** — picks cuda → mps → cpu and selects bf16 / fp16 / fp32 automatically, no manual flags needed.
+- **Base quality-first default** — AuK Base is the default for best output quality; AuK-Flash is selectable when speed matters.
+
+### Why AuK?
+
+| | AuK (this fork) | TTS-only repos |
+| --- | --- | --- |
+| Content & acoustic editing | ✅ | ❌ |
+| Emotion / paralinguistic control | ✅ | ❌ |
+| Speech enhancement | ✅ | ❌ |
+| Source separation | ✅ | ❌ |
+| Docker out of the box | ✅ | ❌ |
 
 ## News
 
@@ -38,6 +61,7 @@ https://github.com/user-attachments/assets/c532bbdb-e6ce-4434-a9a5-16f29a8d4135
 
 ## Contents
 
+- [Why this fork?](#why-this-fork)
 - [News](#news)
 - [Introduction](#introduction)
 - [Performance](#performance)
@@ -52,6 +76,7 @@ https://github.com/user-attachments/assets/c532bbdb-e6ce-4434-a9a5-16f29a8d4135
     - [Prompt Enhancer](#prompt-enhancer)
     - [CLI Examples](#cli-examples)
   - [Interactive Gradio demo](#interactive-gradio-demo)
+  - [Docker](#docker)
   - [ComfyUI](#comfyui)
   - [Python API](#python-api)
 - [Fine-tuning](#fine-tuning)
@@ -486,6 +511,17 @@ Other examples:
 auk-gradio --share
 auk-gradio --port 8000
 ```
+
+### Docker
+
+No local setup needed — weights auto-download on first run:
+
+```bash
+docker compose up --build
+# NVIDIA GPU: DEVICE=cuda docker compose --profile gpu up --build
+```
+
+See [docs/DOCKER.md](docs/DOCKER.md) for full instructions (ports, volumes, `SKIP_AUK_FLASH`, `.env`).
 
 ### ComfyUI
 

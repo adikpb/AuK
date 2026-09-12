@@ -23,6 +23,20 @@ logging.getLogger().addFilter(lambda record: "System prompt modified" not in rec
 _DTYPE_MAP = {"fp16": torch.float16, "bf16": torch.bfloat16, "fp32": torch.float32}
 
 
+def _resolve_dtype(dtype: str | None, device: str) -> torch.dtype:
+    """Pick the best dtype for the target device, honouring an explicit override."""
+    if dtype is not None:
+        return _DTYPE_MAP.get(dtype, torch.bfloat16)
+    dev_type = torch.device(device).type
+    if dev_type == "cuda":
+        if torch.cuda.is_bf16_supported():
+            return torch.bfloat16
+        return torch.float16
+    if dev_type == "mps":
+        return torch.float16
+    return torch.float32
+
+
 class AukInfer:
     def __init__(
         self,
@@ -30,11 +44,17 @@ class AukInfer:
         ckpt_path: str,
         *,
         device: str | None = None,
-        dtype: str = "bf16",
+        dtype: str | None = None,
         qwen_path: str | None = None,
     ):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.dtype = _DTYPE_MAP.get(dtype, torch.bfloat16)
+        self.device = device or (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available()
+            else "cpu"
+        )
+        self.dtype = _resolve_dtype(dtype, self.device)
 
         config = OmegaConf.load(config_path)
         if qwen_path:
@@ -59,9 +79,10 @@ class AukInfer:
         text_encoder_config = config.model.text_encoder
 
         logger.info(f"Loading Qwen text encoder from {text_encoder_config.text_encoder_path} ...")
+        qwen_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
         thinker = Qwen2_5OmniThinkerForConditionalGeneration.from_pretrained(
             text_encoder_config.text_encoder_path,
-            torch_dtype=torch.bfloat16,
+            torch_dtype=qwen_dtype,
         )
         # keep the full multimodal Thinker (text + ref_audio); drop the unused vision tower
         if thinker.visual is not None:
@@ -135,8 +156,11 @@ class AukInfer:
             )
         if unexpected:
             logger.warning(f"Unexpected keys in checkpoint: {unexpected[:10]}")
-        if self.device.startswith("cuda"):
+        _dev_type = torch.device(self.device).type
+        if _dev_type == "cuda":
             torch.cuda.empty_cache()
+        elif _dev_type == "mps" and hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
+            torch.mps.empty_cache()
 
     # ------------------------------------------------------------------ helpers
 
@@ -198,7 +222,8 @@ class AukInfer:
             ref_latent_lens_t = torch.minimum(ref_latent_lens_t, enc_latent_lens.to(ref_latent_lens_t.device))
 
         # --- CFM sample in latent space ---
-        with torch.autocast("cuda", dtype=self.dtype, enabled=self.device.startswith("cuda")):
+        _dev_type = torch.device(self.device).type
+        with torch.autocast(_dev_type, dtype=self.dtype, enabled=_dev_type in ("cuda", "mps")):
             cond_inputs = self.model.build_cond_inputs([messages], self.model.text_processor)
             generated, _ = self.model.sample(
                 cond=ref_latents,

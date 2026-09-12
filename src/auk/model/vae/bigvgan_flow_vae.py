@@ -400,18 +400,19 @@ class BigVGANFlowVAE(nn.Module):
 
         return outputs
 
-    @torch.autocast(enabled=False, device_type="cuda")
     def encoding_and_normalization(self, sample, sample_lengths=None):
-        latent_stats = self.audio_encoder(sample)
-        if sample_lengths is None:
-            sample_lengths = torch.LongTensor([sample.size(-1)] * sample.size(0)).to(sample.device)
-        latent_lens = sample_lengths // self.hop_size
-        mean, log_std = latent_stats.chunk(2, 1)  #  b, d, t
-        latents = mean + torch.randn_like(mean) * torch.exp(log_std)
-        latents = latents.transpose(1, 2).float()  # b, t, d
-        latents = (latents - self.global_mean.float()) / torch.sqrt(self.global_log_std.float())
-        latent_lens = torch.clamp(latent_lens, max=latents.size(1))  # clamp to avoid out of range
-        return latents, latent_lens
+        _dev_type = sample.device.type if hasattr(sample.device, "type") else "cpu"
+        with torch.autocast(enabled=False, device_type=_dev_type):
+            latent_stats = self.audio_encoder(sample)
+            if sample_lengths is None:
+                sample_lengths = torch.LongTensor([sample.size(-1)] * sample.size(0)).to(sample.device)
+            latent_lens = sample_lengths // self.hop_size
+            mean, log_std = latent_stats.chunk(2, 1)  #  b, d, t
+            latents = mean + torch.randn_like(mean) * torch.exp(log_std)
+            latents = latents.transpose(1, 2).float()  # b, t, d
+            latents = (latents - self.global_mean.float()) / torch.sqrt(self.global_log_std.float())
+            latent_lens = torch.clamp(latent_lens, max=latents.size(1))  # clamp to avoid out of range
+            return latents, latent_lens
 
     def denormalize(self, latents):
         latents = latents.float()

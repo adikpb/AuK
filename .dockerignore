@@ -1,0 +1,41 @@
+# ── Docker build-context exclusions ──────────────────────────────────
+# Model weights – either auto-downloaded or mounted at runtime.
+ckpts/
+# Git history – never needed inside the image.
+.git
+.gitignore
+.github
+# Generated outputs – mounted as a volume.
+outputs/
+# Python artefacts.
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.venv/
+venv/
+# Editor / OS clutter.
+.DS_Store
+*.swp
+# Docs & extras not needed for the build.
+# NOTE: assets/demo-input-audio/ IS needed for Gradio examples.
+assets/arch.png
+assets/performance.png
+docs/
+comfyui/
+scripts/
+agent_space/
+gradio/
+eval/
+# Local secrets.
+.env
+.env.*
+!.env.example
+# Pre-commit / linter caches.
+.pre-commit-config.yaml
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/

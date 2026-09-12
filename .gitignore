@@ -19,6 +19,7 @@ build/
 dist/
 .eggs/
 tmp/
+uv.lock
 # Virtual envs
 .venv/
 .venv-*/
